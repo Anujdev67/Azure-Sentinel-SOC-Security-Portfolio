@@ -1,0 +1,31 @@
+// ============================================
+// Query Name: User Account Investigation
+// Description: Comprehensive investigation of
+// a specific user account activities
+// ============================================
+
+let TargetUser = "domain\\username";  // EDIT: Replace with target user
+let InvestigationWindow = 30d;
+
+SecurityEvent
+| where TimeGenerated > ago(InvestigationWindow)
+| where Account == TargetUser
+| summarize 
+    TotalEvents = count(),
+    FirstActivity = min(TimeGenerated),
+    LastActivity = max(TimeGenerated),
+    DistinctComputers = dcount(Computer),
+    DistinctEventTypes = dcount(EventID),
+    FailedLogins = countif(EventID == 4625),
+    SuccessfulLogins = countif(EventID == 4624),
+    ProcessCreations = countif(EventID == 4688),
+    PrivilegeUses = countif(EventID in (4673, 4674)),
+    GroupChanges = countif(EventID == 4728)
+    by Account
+| extend 
+    RiskLevel = case(
+        FailedLogins > 10, "Critical",
+        PrivilegeUses > 5, "High",
+        ProcessCreations > 20, "Medium",
+        "Low"
+    )

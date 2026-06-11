@@ -1,0 +1,30 @@
+// ============================================
+// Query Name: Privilege Escalation Detection
+// MITRE ATT&CK: T1548 (Abuse Elevation Control Mechanism)
+// Severity: High
+// Description: Detects attempts to escalate privileges
+// through various techniques
+// ============================================
+
+SecurityEvent
+| where EventID in (
+    4673,  // Sensitive privilege use
+    4674,  // Privileged object operation
+    4688,  // Process creation
+    4697,  // Service installed
+    4698   // Scheduled task created
+)
+| where (
+    (EventID == 4673 and Process has_any ("sqlservr.exe", "mssqlserver"))
+    or (EventID == 4688 and CommandLine has_any ("runas", "psexec", "at.exe", "schtasks"))
+    or (EventID == 4697)  // Service installation
+    or (EventID == 4698)  // Scheduled task
+)
+| summarize 
+    EventCount = count(),
+    FirstEvent = min(TimeGenerated),
+    LastEvent = max(TimeGenerated),
+    DistinctProcesses = dcount(Process)
+    by Account, Computer, EventID
+| where EventCount >= 2
+| sort by EventCount desc

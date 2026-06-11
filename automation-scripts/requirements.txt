@@ -1,0 +1,13 @@
+azure-identity==1.14.0
+azure-monitor-query==1.2.0
+azure-storage-blob==12.18.0
+azure-keyvault-secrets==4.4.0
+requests==2.31.0
+python-dotenv==1.0.0
+pandas==2.0.3
+numpy==1.24.3
+pytest==7.4.0
+pytest-cov==4.1.0
+black==23.7.0
+flake8==6.0.0
+pylint==2.17.4

@@ -1,0 +1,46 @@
+// ============================================
+// Query Name: Lateral Movement Detection
+// MITRE ATT&CK: T1021 (Remote Services)
+// Severity: High
+// Description: Detects network connections indicating
+// lateral movement across the infrastructure
+// ============================================
+
+SecurityEvent
+| where EventID in (4688, 5140, 5145)  // Process creation, network share access
+| where Process has_any (
+    "net.exe",
+    "psexec.exe",
+    "wmic.exe",
+    "schtasks.exe",
+    "at.exe",
+    "PowerShell.exe"
+)
+| where CommandLine has_any (
+    "\\\\*\\admin$",  // Admin share
+    "\\\\*\\ipc$",    // IPC share
+    "\\\\*\\c$",      // C drive share
+    "\\\\*\\d$",      // D drive share
+    "net user",
+    "net group",
+    "wmic process call create"
+)
+| extend 
+    TargetHost = extract(@'\\\\([^\\]+)\\', 1, CommandLine),
+    AccessType = case(
+        CommandLine has "admin$", "Admin Share Access",
+        CommandLine has "ipc$", "IPC Share Access",
+        CommandLine has "c$", "C Drive Share Access",
+        CommandLine has "net", "Net Enumeration",
+        CommandLine has "wmic", "WMI Remote Execution",
+        "Other"
+    )
+| where isnotempty(TargetHost)
+| summarize 
+    AccessCount = count(),
+    FirstAccess = min(TimeGenerated),
+    LastAccess = max(TimeGenerated),
+    DistinctTargets = dcount(TargetHost)
+    by Account, Computer, AccessType, Process
+| where AccessCount > 2 or DistinctTargets > 1
+| sort by AccessCount desc
